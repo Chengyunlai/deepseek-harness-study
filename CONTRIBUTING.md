@@ -40,3 +40,23 @@
 1. 重跑 `days/` 中所有命令，更新输出与行号；
 2. 逐条复核 `notes/doc-gaps.md` 的差异，修复的条目标为「已修复」而不是删除（历史有价值）；
 3. 在 README 的"实测环境"里更新版本号与日期。
+
+## 自动化与工具
+
+仓库自带一套零构建依赖之外的最小工具链（`tools/`，唯一第三方依赖是 `markdown-it`）：
+
+| 命令 | 作用 | 跑在哪 |
+|---|---|---|
+| `node tools/check-links.mjs` | 校验站内链接与锚点（无断链） | 每次 push / PR（CI） |
+| `node tools/check-upstream.mjs --upstream <上游路径>` | 校验 `path:line` 锚点是否仍存在 | 每周一 UTC 03:00，失效自动开 Issue |
+| `node tools/build-site.mjs` | 生成静态站点到 `site/` | push 后自动部署 GitHub Pages |
+| `node tools/build-pdf.mjs --extra` | 生成打印版 PDF 到 `dist/pdf/`（需本机 Chrome） | 手动；产物发到 Releases |
+
+改动内容后，本地至少跑前两条，再推送。
+
+## 发布打印版
+
+```sh
+node tools/build-pdf.mjs --extra              # 25 个 PDF
+gh release create vX.Y.Z --notes-file NOTES.md dist/pdf/*.pdf
+```
