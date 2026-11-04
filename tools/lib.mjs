@@ -122,6 +122,12 @@ export function pages() {
   })
   groups.push({ title: '深度笔记', items: noteItems })
 
+  const answerItems = listMd('answers').map((f) => {
+    const name = basename(f, '.md')
+    return { src: f, out: `answers/${name}.html`, title: `参考答案 · ${name}` }
+  })
+  if (answerItems.length) groups.push({ title: '参考答案', items: answerItems })
+
   return groups
 }
 
