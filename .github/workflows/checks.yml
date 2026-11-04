@@ -24,7 +24,12 @@ jobs:
         with:
           node-version: 20
 
-      # 校验脚本本身零依赖；安装依赖只为验证站点能构建
+      # 回归护栏：校验脚本必须零依赖。把它放在 npm ci 之前跑，
+      # 一旦有人给 tools/lib.mjs 加了顶层依赖，这一步会立刻失败。
+      - name: Check links without any installed dependency
+        run: node tools/check-links.mjs
+
+      # 安装依赖只为验证站点能构建
       - name: Install build tooling
         working-directory: tools
         run: npm ci --no-audit --no-fund
