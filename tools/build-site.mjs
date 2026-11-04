@@ -3,6 +3,14 @@ import { mkdirSync, writeFileSync, existsSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { REPO, CSS, render, rewriteLinks, rewriteLinks as rw, tocOf, read, pages } from './lib.mjs'
 
+/** 把目录插到标题（或紧随其后的语言切换行）之后，而不是页面最顶部。 */
+function insertToc(body, tocHtml) {
+  if (!tocHtml) return body
+  const withLang = body.match(/^([\s\S]*?<\/h1>\s*<p>[^<]*\|\s*<a[^>]*>[^<]*<\/a>\s*<\/p>)/)
+  if (withLang) return withLang[1] + '\n' + tocHtml + body.slice(withLang[1].length)
+  return body.replace(/<\/h1>/, '</h1>\n' + tocHtml)
+}
+
 const OUT = join(REPO, 'site')
 const groups = pages()
 
@@ -46,7 +54,7 @@ function layout({ title, activeOut, body, toc }) {
   ${nav}
 </aside>
 <main>
-${body.replace(/<\/h1>/, '</h1>\n' + tocHtml)}
+${insertToc(body, tocHtml)}
 <div class="footer">
   MIT License · 个人学习笔记，非官方文档 · 上游 <a href="https://github.com/deepseek-ai/deepseek-harness">deepseek-ai/deepseek-harness</a>（MIT）
 </div>

@@ -150,7 +150,7 @@ a:hover { text-decoration: underline; }
 .sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em;
   color: var(--muted); margin: 18px 0 6px; font-weight: 600; }
 .sidebar ul { list-style: none; margin: 0; padding: 0; }
-.sidebar li { margin: 1px 0; }
+.sidebar li { margin: 1px 0; line-height: 1.45; }
 .sidebar a { display: block; padding: 3px 8px; border-radius: 6px; color: var(--fg); }
 .sidebar a:hover { background: var(--code-bg); text-decoration: none; }
 .sidebar a.active { background: #ddf4ff; color: var(--accent); font-weight: 600; }
