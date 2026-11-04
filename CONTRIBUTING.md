@@ -60,3 +60,9 @@
 node tools/build-pdf.mjs --extra              # 25 个 PDF
 gh release create vX.Y.Z --notes-file NOTES.md dist/pdf/*.pdf
 ```
+
+## CI 约定（防止误报）
+
+- **校验脚本必须零依赖**：`tools/check-links.mjs`、`tools/check-upstream.mjs` 在 CI 的 `上游锚点漂移` job 里运行，该 job **不安装依赖**。任何只在渲染时需要的库（如 `markdown-it`）必须惰性加载，不能出现在 `tools/lib.mjs` 的顶层 import 中——否则脚本会在加载阶段崩溃，被误判为"检测到问题"。
+- **失败要可诊断**：新建 issue 时必须附带检查日志（`$RUNNER_TEMP/drift.log`），并同时让 job 变红，避免"绿着但悄悄开了 issue"。
+- **改完先本地验证**：`node tools/check-links.mjs && node tools/check-upstream.mjs --upstream ~/deepseek-harness`。
