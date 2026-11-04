@@ -29,7 +29,8 @@ try {
   version = JSON.parse(readFileSync(join(UPSTREAM, 'package.json'), 'utf8')).version
 } catch {}
 
-const REF = /`([A-Za-z0-9_@./-]+\.(?:ts|tsx|mts|js|mjs|json|yml|yaml|md)):(\d+)(?:-(\d+))?`/g
+// 只认仓库内完整路径（packages/… 等），避免把笔记里的缩写（如 `pipeline.ts:190`）误判为上游文件
+const REF = /`((?:packages|apps|docs|vendor|scripts|snapshots|benchmarks|python|native)\/[A-Za-z0-9_@./-]+\.(?:ts|tsx|mts|js|mjs|json|yml|yaml|md)):(\d+)(?:-(\d+))?`/g
 const lineCountCache = new Map()
 
 function lineCount(file) {
