@@ -33,8 +33,8 @@ main { padding: 0 !important; }
 .doc-head h1 { border: 0; margin: 4px 0 0; }
 `
 
-function pageHtml({ title, markdown }) {
-  const body = render(markdown)
+async function pageHtml({ title, markdown }) {
+  const body = await render(markdown)
   const toc = tocOf(body)
   const tocHtml = toc.length > 3
     ? `<div class="toc"><b>本页目录</b><ul>${toc.map((t) => `<li style="margin-left:${(t.level - 2) * 14}px"><a href="#${t.id}">${t.text}</a></li>`).join('')}</ul></div>`
@@ -74,7 +74,7 @@ const started = Date.now()
 for (const { src, name } of files) {
   const markdown = (await import('node:fs')).readFileSync(src, 'utf8')
   const htmlPath = join(TMP, `${name}.html`)
-  writeFileSync(htmlPath, pageHtml({ title: name, markdown }))
+  writeFileSync(htmlPath, await pageHtml({ title: name, markdown }))
   const pdfPath = join(OUT, `${name}.pdf`)
   execFileSync(chrome, [
     '--headless=new',

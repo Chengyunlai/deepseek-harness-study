@@ -72,7 +72,7 @@ let built = 0
 for (const it of allItems) {
   if (!existsSync(join(REPO, it.src))) continue
   const md = read(it.src)
-  let body = rewriteLinks(render(md))
+  let body = rewriteLinks(await render(md))
   const toc = tocOf(body)
   const html = layout({ title: it.title, activeOut: it.out, body, toc })
   const dest = join(OUT, it.out)

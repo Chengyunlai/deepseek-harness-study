@@ -1,5 +1,4 @@
 // Shared helpers: markdown rendering, GitHub-compatible anchors, relative link rewriting.
-import MarkdownIt from 'markdown-it'
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join, relative, basename } from 'node:path'
@@ -17,30 +16,43 @@ export function slugify(text) {
   return out.trim().replace(/\s+/g, '-')
 }
 
-const md = new MarkdownIt({ html: true, linkify: false, breaks: false })
+let _md
 
-md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
-  const inline = tokens[idx + 1]
-  const text = inline && inline.type === 'inline' ? inline.content : ''
-  tokens[idx].attrSet('id', slugify(text))
-  return self.renderToken(tokens, idx, options)
-}
+/**
+ * 惰性创建 markdown-it 实例。
+ * 校验脚本（check-links / check-upstream）只需要 slugify，
+ * 不应因为缺少 markdown-it 而崩溃——依赖只在真正渲染时才加载。
+ */
+async function renderer() {
+  if (_md) return _md
+  const { default: MarkdownIt } = await import('markdown-it')
+  const md = new MarkdownIt({ html: true, linkify: false, breaks: false })
 
-// 让外链在新标签打开
-const defaultLinkOpen = md.renderer.rules.link_open ||
-  ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
-md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
-  const href = tokens[idx].attrGet('href') || ''
-  if (/^https?:\/\//.test(href)) {
-    tokens[idx].attrSet('target', '_blank')
-    tokens[idx].attrSet('rel', 'noopener')
+  md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
+    const inline = tokens[idx + 1]
+    const text = inline && inline.type === 'inline' ? inline.content : ''
+    tokens[idx].attrSet('id', slugify(text))
+    return self.renderToken(tokens, idx, options)
   }
-  return defaultLinkOpen(tokens, idx, options, env, self)
+
+  // 让外链在新标签打开
+  const defaultLinkOpen = md.renderer.rules.link_open ||
+    ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
+  md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+    const href = tokens[idx].attrGet('href') || ''
+    if (/^https?:\/\//.test(href)) {
+      tokens[idx].attrSet('target', '_blank')
+      tokens[idx].attrSet('rel', 'noopener')
+    }
+    return defaultLinkOpen(tokens, idx, options, env, self)
+  }
+  _md = md
+  return md
 }
 
-/** 渲染 markdown 为 HTML。 */
-export function render(text) {
-  return md.render(text)
+/** 渲染 markdown 为 HTML（需要 markdown-it）。 */
+export async function render(text) {
+  return (await renderer()).render(text)
 }
 
 /** 把 .md 链接改写成 .html（站内链接）。 */

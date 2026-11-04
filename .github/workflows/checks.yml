@@ -24,6 +24,7 @@ jobs:
         with:
           node-version: 20
 
+      # 校验脚本本身零依赖；安装依赖只为验证站点能构建
       - name: Install build tooling
         working-directory: tools
         run: npm ci --no-audit --no-fund
@@ -48,41 +49,63 @@ jobs:
       - name: Clone upstream (shallow)
         run: git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness.git "$RUNNER_TEMP/upstream"
 
+      # 校验脚本零依赖：这个 job 不需要 npm ci
       - name: Verify cited files and line ranges
         id: check
         continue-on-error: true
-        run: node tools/check-upstream.mjs --upstream "$RUNNER_TEMP/upstream"
+        run: |
+          set -o pipefail
+          node tools/check-upstream.mjs --upstream "$RUNNER_TEMP/upstream" 2>&1 | tee "$RUNNER_TEMP/drift.log"
+          exit "${PIPESTATUS[0]}"
 
       - name: Open issue on drift
         if: steps.check.outcome == 'failure'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          title="上游漂移：笔记中引用的文件或行号已失效（$(date -u +%Y-%m-%d)）"
-          existing=$(gh issue list --state open --search "上游漂移 in:title" --json number --jq 'length')
-          if [ "$existing" != "0" ]; then
+          open_count=$(gh issue list --state open --search "上游漂移 in:title" --json number --jq 'length')
+          if [ "$open_count" != "0" ]; then
             echo "已有未关闭的漂移 issue，跳过创建"
             exit 0
           fi
-          gh issue create --title "$title" --body "$(cat <<'BODY'
-          `tools/check-upstream.mjs` 在最新上游上发现引用的文件已不存在（或行号超出范围）。
 
-          复现：
+          {
+            echo '`tools/check-upstream.mjs` 在最新上游上发现引用的文件已不存在（或行号超出范围）。'
+            echo
+            echo '<details><summary>检查输出（最后 80 行）</summary>'
+            echo
+            echo '```'
+            tail -80 "$RUNNER_TEMP/drift.log" 2>/dev/null || true
+            echo '```'
+            echo
+            echo '</details>'
+            echo
+            echo '### 复现'
+            echo
+            echo '```sh'
+            echo 'git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness.git /tmp/upstream'
+            echo 'node tools/check-upstream.mjs --upstream /tmp/upstream'
+            echo '```'
+            echo
+            echo '### 修复清单（见 CONTRIBUTING.md）'
+            echo
+            echo '1. 用 `grep -rn "<被移动的符号>" packages/` 找到新位置；'
+            echo '2. 更新 `days/`、`handbook.md`、`map.md`、`notes/` 中的 `path:line` 锚点；'
+            echo '3. 若是教程行为变化，同步更新 `notes/doc-gaps.md` 的复核清单；'
+            echo '4. 提交前跑 `node tools/check-links.mjs` 与 `node tools/check-upstream.mjs --upstream …`。'
+          } > "$RUNNER_TEMP/issue.md"
 
-          ```sh
-          git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness.git /tmp/upstream
-          node tools/check-upstream.mjs --upstream /tmp/upstream
-          ```
-
-          修复清单（见 CONTRIBUTING.md）：
-
-          1. 用 `grep -rn "<被移动的符号>" packages/` 找到新位置；
-          2. 更新 `days/`、`handbook.md`、`map.md`、`notes/` 中的 `path:line` 锚点；
-          3. 若是教程行为变化，同步更新 `notes/doc-gaps.md` 的复核清单；
-          4. 提交前跑 `node tools/check-links.mjs` 与 `node tools/check-upstream.mjs --upstream …`。
-          BODY
-          )"
+          gh issue create \
+            --title "上游漂移：笔记中引用的文件或行号已失效（$(date -u +%Y-%m-%d)）" \
+            --body-file "$RUNNER_TEMP/issue.md"
         continue-on-error: true
+
+      # issue 是长期信号，红叉是即时信号：两者都给
+      - name: Fail job when drift is detected
+        if: steps.check.outcome == 'failure'
+        run: |
+          echo "::error::上游锚点漂移，详见上方日志与新建 issue"
+          exit 1
 
   pdf:
     name: 打印版 PDF（手动触发）
