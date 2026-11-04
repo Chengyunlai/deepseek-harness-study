@@ -54,16 +54,25 @@ mkdirSync(TMP, { recursive: true })
 const PROFILE = join(REPO, 'tools', '.chrome-profile')
 mkdirSync(PROFILE, { recursive: true })
 
-const files = readdirSync(join(REPO, 'days'))
+const dayFiles = readdirSync(join(REPO, 'days'))
   .filter((f) => f.endsWith('.md') && f !== 'README.md')
   .sort((a, b) => (a.startsWith('day-00') ? -1 : b.startsWith('day-00') ? 1 : a.localeCompare(b)))
+  .map((f) => ({ src: join(REPO, 'days', f), name: basename(f, '.md') }))
+
+// --extra 额外产出整册版（handbook）与地图版（map）
+const extra = process.argv.includes('--extra')
+  ? [
+      { src: join(REPO, 'handbook.md'), name: 'handbook-全量版' },
+      { src: join(REPO, 'map.md'), name: 'map-地图版' },
+    ]
+  : []
+
+const files = [...dayFiles, ...extra]
 
 let ok = 0
 const started = Date.now()
-for (const f of files) {
-  const src = join(REPO, 'days', f)
+for (const { src, name } of files) {
   const markdown = (await import('node:fs')).readFileSync(src, 'utf8')
-  const name = basename(f, '.md')
   const htmlPath = join(TMP, `${name}.html`)
   writeFileSync(htmlPath, pageHtml({ title: name, markdown }))
   const pdfPath = join(OUT, `${name}.pdf`)
