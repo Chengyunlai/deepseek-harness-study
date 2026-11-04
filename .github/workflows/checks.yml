@@ -1,0 +1,111 @@
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # 每周一 03:00 UTC 检查上游是否漂移（文件被移动/重命名/行号过期）
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  links:
+    name: 站内链接与锚点
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install build tooling
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Check internal links and anchors
+        run: node tools/check-links.mjs
+
+      - name: Check site builds
+        run: node tools/build-site.mjs
+
+  upstream:
+    name: 上游锚点漂移
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Clone upstream (shallow)
+        run: git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness.git "$RUNNER_TEMP/upstream"
+
+      - name: Verify cited files and line ranges
+        id: check
+        continue-on-error: true
+        run: node tools/check-upstream.mjs --upstream "$RUNNER_TEMP/upstream"
+
+      - name: Open issue on drift
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="上游漂移：笔记中引用的文件或行号已失效（$(date -u +%Y-%m-%d)）"
+          existing=$(gh issue list --state open --search "上游漂移 in:title" --json number --jq 'length')
+          if [ "$existing" != "0" ]; then
+            echo "已有未关闭的漂移 issue，跳过创建"
+            exit 0
+          fi
+          gh issue create --title "$title" --body "$(cat <<'BODY'
+          `tools/check-upstream.mjs` 在最新上游上发现引用的文件已不存在（或行号超出范围）。
+
+          复现：
+
+          ```sh
+          git clone --depth 1 https://github.com/deepseek-ai/deepseek-harness.git /tmp/upstream
+          node tools/check-upstream.mjs --upstream /tmp/upstream
+          ```
+
+          修复清单（见 CONTRIBUTING.md）：
+
+          1. 用 `grep -rn "<被移动的符号>" packages/` 找到新位置；
+          2. 更新 `days/`、`handbook.md`、`map.md`、`notes/` 中的 `path:line` 锚点；
+          3. 若是教程行为变化，同步更新 `notes/doc-gaps.md` 的复核清单；
+          4. 提交前跑 `node tools/check-links.mjs` 与 `node tools/check-upstream.mjs --upstream …`。
+          BODY
+          )"
+        continue-on-error: true
+
+  pdf:
+    name: 打印版 PDF（手动触发）
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install build tooling
+        working-directory: tools
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate PDFs
+        env:
+          CHROME: /usr/bin/google-chrome
+        run: node tools/build-pdf.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: printable-pdfs
+          path: dist/pdf/*.pdf
+          retention-days: 30

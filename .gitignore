@@ -6,9 +6,20 @@ Thumbs.db
 .vscode/
 *.swp
 
-# 打印产物（自己生成的 PDF 不入库）
+# 打印产物（自己生成的 PDF 不入库；发布版见 Releases）
 *.pdf
 *.docx
+
+# 构建产物
+site/
+dist/
+
+# 工具链
+tools/node_modules/
+tools/.npm-cache/
+tools/.chrome-profile/
+tools/.chrome/
+tools/.pdf-build/
 
 # 临时草稿
 tmp/

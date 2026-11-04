@@ -1,0 +1,15 @@
+{
+  "name": "dsh-study-tools",
+  "private": true,
+  "type": "module",
+  "description": "Build and verification tooling for this study repository",
+  "scripts": {
+    "site": "node build-site.mjs",
+    "pdf": "node build-pdf.mjs",
+    "check:links": "node check-links.mjs",
+    "check:upstream": "node check-upstream.mjs"
+  },
+  "devDependencies": {
+    "markdown-it": "^14.3.3"
+  }
+}

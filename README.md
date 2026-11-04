@@ -1,5 +1,7 @@
 # DeepSeek Harness 源码学习笔记（21 天）
 
+中文 | [English](README.en.md)
+
 > 一份面向**零基础读者**的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 源码学习路线：从"这个程序由什么组成"开始，到能给它写一个插件并挂进真实产品。
 >
 > **所有命令与输出都在真实 checkout 上实测**（`0.2.2-alpha.3`，macOS，Node v22.22.1），不是"文档里抄的应该输出"。全部流程**不需要 API key**。
@@ -96,7 +98,13 @@
 
 ## 怎么用
 
+### 方式 0：在线看（不用装任何东西）
+
+站点：**https://chengyunlai.github.io/deepseek-harness-study/**（每次推送自动重建）
+
 ### 方式 A：按天打印（推荐）
+
+打印版 PDF 见 [Releases](https://github.com/Chengyunlai/deepseek-harness-study/releases)，一天一个文件。
 
 每次只打印一天的内容，学完在纸上勾三个方框：
 
